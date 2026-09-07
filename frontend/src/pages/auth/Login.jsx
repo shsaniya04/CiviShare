@@ -1,4 +1,7 @@
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import axios from "axios";
+
 import {
   Building2,
   Mail,
@@ -10,12 +13,55 @@ import {
 function Login() {
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async (e) => {
     e.preventDefault();
 
-    // Temporary frontend login
-    // We will connect this to the backend later.
-    navigate("/dashboard");
+    setError("");
+    setLoading(true);
+
+    try {
+      const response = await axios.post(
+        "http://localhost:5000/api/auth/login",
+        {
+          email,
+          password
+        }
+      );
+
+      // Save JWT token
+      localStorage.setItem("token", response.data.token);
+
+      // Save user information
+      localStorage.setItem(
+        "user",
+        JSON.stringify(response.data.user)
+      );
+
+      // Go to dashboard
+      navigate("/dashboard");
+
+    } catch (error) {
+      console.error("Login error:", error);
+
+      if (error.response) {
+        setError(
+          error.response.data.message ||
+          "Invalid email or password"
+        );
+      } else {
+        setError(
+          "Unable to connect to the server. Make sure the backend is running."
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -96,6 +142,14 @@ function Login() {
 
           <form onSubmit={handleLogin}>
 
+            {/* Error message */}
+
+            {error && (
+              <div className="auth-error">
+                {error}
+              </div>
+            )}
+
             <div className="form-group">
 
               <label>Email Address</label>
@@ -107,6 +161,8 @@ function Login() {
                 <input
                   type="email"
                   placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   required
                 />
 
@@ -134,6 +190,8 @@ function Login() {
                 <input
                   type="password"
                   placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   required
                 />
 
@@ -145,9 +203,11 @@ function Login() {
             <button
               type="submit"
               className="btn-primary auth-submit"
+              disabled={loading}
             >
-              Login
-              <ArrowRight size={18} />
+              {loading ? "Logging in..." : "Login"}
+
+              {!loading && <ArrowRight size={18} />}
             </button>
 
           </form>

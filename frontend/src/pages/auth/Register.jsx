@@ -1,5 +1,7 @@
+
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import axios from "axios";
 
 import {
   Building2,
@@ -12,18 +14,77 @@ import {
 import RoleCard from "../../components/RoleCard";
 
 function Register() {
-
   const navigate = useNavigate();
 
   const [role, setRole] = useState("site");
 
-  const handleRegister = (e) => {
+  const [formData, setFormData] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    location: "",
+    password: ""
+  });
+
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  // Handle input changes
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  // Handle registration
+  const handleRegister = async (e) => {
     e.preventDefault();
 
-    // Temporary frontend registration
-    // Backend authentication will be added later.
+    setError("");
+    setLoading(true);
 
-    navigate("/dashboard");
+    // Convert frontend roles to backend roles
+    let backendRole = "site_manager";
+
+    if (role === "owner") {
+      backendRole = "resource_owner";
+    }
+
+    try {
+      await axios.post(
+        "http://localhost:5000/api/auth/register",
+        {
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          phone: formData.phone,
+          role: backendRole,
+          location: formData.location
+        }
+      );
+
+      // Registration successful
+      alert("Account created successfully!");
+
+      navigate("/login");
+
+    } catch (error) {
+      console.error("Registration error:", error);
+
+      if (error.response) {
+        setError(
+          error.response.data.message ||
+          "Registration failed. Please try again."
+        );
+      } else {
+        setError(
+          "Unable to connect to the server. Make sure the backend is running."
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -45,7 +106,6 @@ function Register() {
           </div>
 
         </Link>
-
 
         <div className="auth-message">
 
@@ -85,13 +145,11 @@ function Register() {
 
           </div>
 
-
           <form onSubmit={handleRegister}>
 
             <label className="role-heading">
               I am a...
             </label>
-
 
             <div className="role-options">
 
@@ -103,7 +161,6 @@ function Register() {
                 onClick={() => setRole("site")}
               />
 
-
               <RoleCard
                 icon={<Truck size={23} />}
                 title="Equipment Owner"
@@ -111,7 +168,6 @@ function Register() {
                 selected={role === "owner"}
                 onClick={() => setRole("owner")}
               />
-
 
               <RoleCard
                 icon={<Store size={23} />}
@@ -124,6 +180,15 @@ function Register() {
             </div>
 
 
+            {/* Error message */}
+
+            {error && (
+              <div className="auth-error">
+                {error}
+              </div>
+            )}
+
+
             <div className="form-row">
 
               <div className="form-group">
@@ -132,7 +197,10 @@ function Register() {
 
                 <input
                   type="text"
+                  name="name"
                   placeholder="Your name"
+                  value={formData.name}
+                  onChange={handleChange}
                   required
                 />
 
@@ -145,7 +213,10 @@ function Register() {
 
                 <input
                   type="tel"
+                  name="phone"
                   placeholder="+91 XXXXX XXXXX"
+                  value={formData.phone}
+                  onChange={handleChange}
                   required
                 />
 
@@ -160,7 +231,10 @@ function Register() {
 
               <input
                 type="email"
+                name="email"
                 placeholder="you@example.com"
+                value={formData.email}
+                onChange={handleChange}
                 required
               />
 
@@ -173,7 +247,10 @@ function Register() {
 
               <input
                 type="text"
+                name="location"
                 placeholder="Mumbai, Maharashtra"
+                value={formData.location}
+                onChange={handleChange}
                 required
               />
 
@@ -186,7 +263,10 @@ function Register() {
 
               <input
                 type="password"
+                name="password"
                 placeholder="Create a password"
+                value={formData.password}
+                onChange={handleChange}
                 required
               />
 
@@ -196,9 +276,11 @@ function Register() {
             <button
               type="submit"
               className="btn-primary auth-submit"
+              disabled={loading}
             >
-              Create Account
-              <ArrowRight size={18} />
+              {loading ? "Creating Account..." : "Create Account"}
+
+              {!loading && <ArrowRight size={18} />}
             </button>
 
           </form>
