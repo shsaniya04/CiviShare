@@ -5,6 +5,7 @@ import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 import Dashboard from "./pages/Dashboard/Dashboard";
 import ResourceSearch from "./pages/Resources/ResourceSearch";
+import ResourceDetails from "./pages/Resources/ResourceDetails";
 import EmergencyRequest from "./pages/Requests/EmergencyRequest";
 import MyRequests from "./pages/Requests/MyRequests";
 import Profile from "./pages/Profile/Profile";
@@ -41,6 +42,11 @@ function App() {
       />
 
       <Route
+        path="/resources/:id"
+        element={<ResourceDetails />}
+      />
+
+      <Route
         path="/emergency-request"
         element={<EmergencyRequest />}
       />
@@ -50,19 +56,18 @@ function App() {
         element={<MyRequests />}
       />
 
-      <Route 
-        path="/profile" 
-        element={<Profile />} 
+      <Route
+        path="/profile"
+        element={<Profile />}
       />
 
-      <Route 
-        path="/notifications" 
-        element={<Notifications />} 
+      <Route
+        path="/notifications"
+        element={<Notifications />}
       />
 
     </Routes>
   );
 }
-
 
 export default App;

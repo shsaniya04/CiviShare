@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import axios from "axios";
 
 import {
   Building2,
@@ -15,103 +16,122 @@ import {
 
 function ResourceSearch() {
 
+  const navigate = useNavigate();
+
   const [search, setSearch] = useState("");
   const [type, setType] = useState("All");
 
+  const [resources, setResources] = useState([]);
 
-  // Temporary resource data
-  // Later this will come from our backend/database.
-
-  const resources = [
-    {
-      id: 1,
-      name: "Concrete Pump",
-      type: "Equipment",
-      location: "Mumbai",
-      distance: "2.4 km",
-      availability: "Available Now",
-      owner: "ABC Equipment Rentals",
-      match: "94%"
-    },
-
-    {
-      id: 2,
-      name: "Transit Mixer",
-      type: "Equipment",
-      location: "Mumbai",
-      distance: "3.1 km",
-      availability: "Available Now",
-      owner: "BuildTech Equipment",
-      match: "89%"
-    },
-
-    {
-      id: 3,
-      name: "Cement - OPC 53 Grade",
-      type: "Material",
-      location: "Mumbai",
-      distance: "4.8 km",
-      availability: "Available",
-      owner: "Shree Construction Supplies",
-      match: "86%"
-    },
-
-    {
-      id: 4,
-      name: "Tower Crane",
-      type: "Equipment",
-      location: "Thane",
-      distance: "8.2 km",
-      availability: "Available Tomorrow",
-      owner: "Metro Machinery",
-      match: "82%"
-    },
-
-    {
-      id: 5,
-      name: "Steel Reinforcement Bars",
-      type: "Material",
-      location: "Mumbai",
-      distance: "5.6 km",
-      availability: "Available",
-      owner: "Mumbai Steel Traders",
-      match: "79%"
-    },
-
-    {
-      id: 6,
-      name: "Concrete Mixer",
-      type: "Equipment",
-      location: "Navi Mumbai",
-      distance: "11.4 km",
-      availability: "Available Now",
-      owner: "Rapid Equipment",
-      match: "76%"
-    }
-  ];
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
 
-  // Filter resources
+  // =========================================
+  // GET RESOURCES FROM BACKEND
+  // =========================================
+
+  useEffect(() => {
+
+    const fetchResources = async () => {
+
+      try {
+
+        const token = localStorage.getItem("token");
+
+        if (!token) {
+          navigate("/login");
+          return;
+        }
+
+        const response = await axios.get(
+          "http://localhost:5000/api/resources",
+          {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          }
+        );
+
+        setResources(response.data.resources || []);
+
+      } catch (error) {
+
+        console.error("Error fetching resources:", error);
+
+        if (error.response?.status === 401) {
+
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+
+          navigate("/login");
+
+        } else {
+
+          setError(
+            "Unable to load resources. Please try again."
+          );
+
+        }
+
+      } finally {
+
+        setLoading(false);
+
+      }
+
+    };
+
+
+    fetchResources();
+
+  }, [navigate]);
+
+
+  // =========================================
+  // FILTER RESOURCES
+  // =========================================
 
   const filteredResources = resources.filter((resource) => {
 
     const matchesSearch =
       resource.name
-        .toLowerCase()
+        ?.toLowerCase()
         .includes(search.toLowerCase());
 
     const matchesType =
       type === "All" ||
-      resource.type === type;
+      resource.category?.toLowerCase() === type.toLowerCase();
 
     return matchesSearch && matchesType;
 
   });
 
 
+  // =========================================
+  // RESOURCE TYPE DISPLAY
+  // =========================================
+
+  const getResourceType = (category) => {
+
+    if (!category) return "Other";
+
+    return (
+      category.charAt(0).toUpperCase() +
+      category.slice(1)
+    );
+
+  };
+
+
+  // =========================================
+  // RENDER
+  // =========================================
+
   return (
 
     <div className="resource-page">
+
 
       {/* ================= SIDEBAR ================= */}
 
@@ -137,25 +157,28 @@ function ResourceSearch() {
         </Link>
 
 
-      <nav className="resource-navigation">
+        <nav className="resource-navigation">
 
-        <Link to="/dashboard">
-          Dashboard
-        </Link>
+          <Link to="/dashboard">
+            Dashboard
+          </Link>
 
-        <Link to="/resources" className="active">
-          Find Resources
-        </Link>
+          <Link
+            to="/resources"
+            className="active"
+          >
+            Find Resources
+          </Link>
 
-        <Link to="/my-requests">
-          My Requests
-        </Link>
+          <Link to="/my-requests">
+            My Requests
+          </Link>
 
-        <Link to="/profile">
-          Profile
-        </Link>
+          <Link to="/profile">
+            Profile
+          </Link>
 
-      </nav>
+        </nav>
 
 
         <div className="resource-sidebar-bottom">
@@ -177,6 +200,7 @@ function ResourceSearch() {
 
       <main className="resource-main">
 
+
         {/* HEADER */}
 
         <div className="resource-header">
@@ -187,13 +211,18 @@ function ResourceSearch() {
               to="/dashboard"
               className="back-link"
             >
+
               <ArrowLeft size={16} />
+
               Back to Dashboard
+
             </Link>
+
 
             <h1>
               Find Resources
             </h1>
+
 
             <p>
               Search for equipment, materials and
@@ -240,12 +269,24 @@ function ResourceSearch() {
                 All Resources
               </option>
 
-              <option value="Equipment">
+              <option value="equipment">
                 Equipment
               </option>
 
-              <option value="Material">
+              <option value="material">
                 Materials
+              </option>
+
+              <option value="tool">
+                Tools
+              </option>
+
+              <option value="vehicle">
+                Vehicles
+              </option>
+
+              <option value="other">
+                Other
               </option>
 
             </select>
@@ -266,10 +307,14 @@ function ResourceSearch() {
             </h2>
 
             <p>
-              {filteredResources.length} resources found
+              {loading
+                ? "Loading resources..."
+                : `${filteredResources.length} resources found`
+              }
             </p>
 
           </div>
+
 
           <div className="location-display">
 
@@ -282,119 +327,184 @@ function ResourceSearch() {
         </div>
 
 
-        {/* RESOURCE RESULTS */}
+        {/* ================= ERROR ================= */}
 
-        <div className="resource-results">
+        {error && (
 
-          {filteredResources.length > 0 ? (
+          <div className="auth-error">
+            {error}
+          </div>
 
-            filteredResources.map((resource) => (
-
-              <div
-                className="resource-result-card"
-                key={resource.id}
-              >
-
-                {/* ICON */}
-
-                <div className="result-icon">
-
-                  {resource.type === "Equipment" ? (
-                    <Truck size={25} />
-                  ) : (
-                    <Package size={25} />
-                  )}
-
-                </div>
+        )}
 
 
-                {/* DETAILS */}
+        {/* ================= LOADING ================= */}
 
-                <div className="result-details">
+        {loading ? (
 
-                  <div className="result-title-row">
+          <div className="no-results">
 
-                    <h3>
-                      {resource.name}
-                    </h3>
+            <Package size={35} />
 
-                    <span className="ai-match">
-                      {resource.match} AI Match
-                    </span>
+            <h3>
+              Loading resources...
+            </h3>
 
-                  </div>
+            <p>
+              Getting available resources from CiviShare.
+            </p>
+
+          </div>
+
+        ) : (
 
 
-                  <span className="result-type">
-                    {resource.type}
-                  </span>
+          /* ================= RESOURCE RESULTS ================= */
+
+          <div className="resource-results">
+
+            {filteredResources.length > 0 ? (
+
+              filteredResources.map((resource) => (
+
+                <div
+                  className="resource-result-card"
+                  key={resource._id}
+                >
 
 
-                  <div className="result-meta">
+                  {/* ICON */}
 
-                    <span>
-                      <MapPin size={14} />
-                      {resource.location}
-                    </span>
+                  <div className="result-icon">
 
-                    <span>
-                      {resource.distance}
-                    </span>
+                    {resource.category === "equipment" ||
+                    resource.category === "vehicle" ? (
 
-                    <span className="available-status">
-                      <CheckCircle size={14} />
-                      {resource.availability}
-                    </span>
+                      <Truck size={25} />
+
+                    ) : (
+
+                      <Package size={25} />
+
+                    )}
 
                   </div>
 
 
-                  <p className="resource-owner">
-                    Provided by{" "}
-                    <strong>
-                      {resource.owner}
-                    </strong>
-                  </p>
+                  {/* DETAILS */}
+
+                  <div className="result-details">
+
+
+                    <div className="result-title-row">
+
+                      <h3>
+                        {resource.name}
+                      </h3>
+
+                    </div>
+
+
+                    <span className="result-type">
+
+                      {getResourceType(
+                        resource.category
+                      )}
+
+                    </span>
+
+
+                    <div className="result-meta">
+
+
+                      <span>
+
+                        <MapPin size={14} />
+
+                        {resource.location}
+
+                      </span>
+
+
+                      <span>
+
+                        Quantity: {resource.quantity}
+
+                      </span>
+
+
+                      <span className="available-status">
+
+                        <CheckCircle size={14} />
+
+                        {resource.available
+                          ? "Available"
+                          : "Not Available"
+                        }
+
+                      </span>
+
+                    </div>
+
+
+                    <p className="resource-owner">
+
+                      {resource.description}
+
+                    </p>
+
+                  </div>
+
+
+                  {/* ACTION */}
+
+                  <button
+                    className="view-resource-button"
+                    onClick={() =>
+                      navigate(
+                        `/resources/${resource._id}`
+                      )
+                    }
+                  >
+
+                    View Details
+
+                  </button>
+
 
                 </div>
 
+              ))
 
-                {/* ACTION */}
+            ) : (
 
-                <button className="view-resource-button">
-                  View Details
-                </button>
+              <div className="no-results">
+
+                <Search size={35} />
+
+                <h3>
+                  No resources found
+                </h3>
+
+                <p>
+                  Try searching for another
+                  equipment or material.
+                </p>
 
               </div>
 
-            ))
+            )}
 
-          ) : (
+          </div>
 
-            <div className="no-results">
-
-              <Search size={35} />
-
-              <h3>
-                No resources found
-              </h3>
-
-              <p>
-                Try searching for another
-                equipment or material.
-              </p>
-
-            </div>
-
-          )}
-
-        </div>
+        )}
 
       </main>
 
     </div>
 
   );
+
 }
 
 
